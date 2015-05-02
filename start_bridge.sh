@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 ifconfig bat0 down
 
 brctl addbr mesh-bridge

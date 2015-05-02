@@ -1,11 +1,6 @@
 #!/usr/bin/python
-
-# Based on getifaddrs.py from pydlnadms [http://code.google.com/p/pydlnadms/].
-# Only tested on Linux!
-#
-# Meshoui added :
-# Code from 'provegard'.
-# Find on github : 'https://gist.github.com/provegard/1536682#file-getnifs-py'
+# -*- coding: utf-8 -*-
+# __author__ = 'remi'
 
 from socket import AF_INET, AF_INET6, inet_ntop
 from ctypes import (
@@ -15,6 +10,7 @@ from ctypes import (
 )
 import ctypes.util
 import ctypes
+import os
 
 class struct_sockaddr(Structure):
     _fields_ = [
@@ -79,10 +75,12 @@ class NetworkInterface(object):
         self.addresses = {}
 
     def __str__(self):
-        return "%s [index=%d, IPv4=%s, IPv6=%s]" % (
-            self.name, self.index,
+        return " [%d] %s: IPv4=%s, IPv6=%s" % (
+            self.index,
+            self.name,
             self.addresses.get(AF_INET),
-            self.addresses.get(AF_INET6))
+            self.addresses.get(AF_INET6),
+            )
 
 def get_network_interfaces():
     ifap = POINTER(struct_ifaddrs)()
@@ -104,5 +102,38 @@ def get_network_interfaces():
     finally:
         libc.freeifaddrs(ifap)
 
+def choice_the_interface(nis, choice):
+    for n in nis:
+        if str(n.index) == choice:
+            return n.name
+    return None
+
 if __name__ == '__main__':
-    print([str(ni) for ni in get_network_interfaces()])
+    print("Vous démarez le script de configuration de MeshOui\n\n")
+    nis = get_network_interfaces()
+    for ni in nis:
+        print(str(ni))
+    goodchoice = False
+    choice = raw_input("\nVeuillez choisir une interface de connection au mesh identifié par [x]: ")
+    while not goodchoice:
+        if choice in [str(n.index) for n in nis]:
+            goodchoice = True
+        else:
+            choice = raw_input("Choix caca. Resaisissez une interface de connection identifié par [x]: ")
+    inname = choice_the_interface(nis, choice)
+    os.system("sudo ./start_bat.sh %s" % inname)
+    ouinon = raw_input("\n\nVoulez vous ajouter un bridge? O/N :")
+    if ouinon.lower() == 'o' or ouinon.lower() == 'oui':
+        print("\n")
+        for ni in nis:
+            if not choice == str(ni.index):
+                print(str(ni))
+        goodchoice = False
+        choice2 = raw_input("\nVeuillez choisir une interface de bridge identifié par [x]: ")
+        while not goodchoice:
+            if choice2 in [str(n.index) for n in nis] and not choice2 == choice:
+                goodchoice = True
+            else:
+                choice2 = raw_input("Choix caca. Resaisissez une interface de bridge identifié par [x]: ")
+        inname = choice_the_interface(nis, choice2)
+        os.system("sudo ./start_bridge.sh %s" % inname)
